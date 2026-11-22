@@ -1,0 +1,14 @@
+{
+  "name": "health-timeline",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "engines": { "node": ">=22.16" },
+  "scripts": {
+    "ingest": "python3 ingest.py",
+    "start": "npm run ingest && node server.mjs",
+    "test": "python3 verify_ingest.py && node --test verify_tool.mjs"
+  },
+  "openclaw": { "extensions": ["./openclaw.mjs"] }
+}

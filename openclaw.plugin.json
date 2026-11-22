@@ -1,0 +1,8 @@
+{
+  "id": "health-timeline",
+  "name": "Health Timeline",
+  "description": "Read-only comparison of the two synthetic direct serum LDL reports.",
+  "configSchema": { "type": "object", "properties": {}, "additionalProperties": false },
+  "contracts": { "tools": ["health_ldl_trend"] },
+  "toolMetadata": { "health_ldl_trend": { "optional": true } }
+}

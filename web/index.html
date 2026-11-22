@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#123f30">
+  <title>Health Timeline · LDL</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.mjs"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <span class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>Health Timeline</span>
+      <span class="demo">Synthetic data</span>
+    </div>
+  </header>
+  <main class="shell">
+    <div class="introduction">
+      <h1>Did my cholesterol actually go up?</h1>
+      <p id="answer" role="status">Loading the synthetic lab reports…</p>
+    </div>
+    <div class="dashboard" id="dashboard" hidden>
+      <section class="card trend" aria-labelledby="trend-title">
+        <header class="card-header">
+          <div><h2 id="trend-title">LDL over time</h2><p>Direct serum LDL · mg/dL</p></div>
+          <div class="delta" id="delta" hidden></div>
+        </header>
+        <div id="chart" class="chart" role="group" aria-label="LDL chart by collection date"></div>
+        <p class="chart-note">Select a point to see the lab report.</p>
+      </section>
+      <section class="card timeline" aria-labelledby="timeline-title">
+        <header class="card-header">
+          <div><h2 id="timeline-title">Timeline</h2><p>Ordered by sample collection date</p></div>
+          <span class="total" id="total"></span>
+        </header>
+        <ol id="results" class="results"></ol>
+        <details id="receipts" class="receipts">
+          <summary>See receipt order</summary>
+          <ol id="receipt-list"></ol>
+        </details>
+      </section>
+      <aside class="card evidence" id="evidence" aria-labelledby="evidence-title">
+        <header class="card-header"><div><h2 id="evidence-title">Report evidence</h2><p id="provider"></p></div></header>
+        <div class="evidence-body">
+          <dl class="reported">
+            <div><dt>Reported LDL</dt><dd id="original"></dd></div>
+            <div><dt>Lab reference range</dt><dd id="lab-range"></dd></div>
+          </dl>
+          <p id="conversion" class="conversion"></p>
+          <figure id="source" class="source">
+            <figcaption id="source-label"></figcaption>
+            <div class="pdf-page">
+              <img id="page-image" alt="">
+              <span id="line-marker" aria-hidden="true"></span>
+            </div>
+            <blockquote id="excerpt"></blockquote>
+            <a id="pdf-link" target="_blank" rel="noopener">Open original PDF <span aria-hidden="true">↗</span></a>
+          </figure>
+          <dl id="dates" class="dates"></dl>
+        </div>
+      </aside>
+      <section class="card review" id="review" aria-labelledby="review-title" hidden>
+        <header class="card-header"><h2 id="review-title">Needs review</h2></header>
+        <ul id="review-list"></ul>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

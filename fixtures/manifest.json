@@ -1,0 +1,28 @@
+{
+  "documents": [
+    {
+      "id": "meridian",
+      "file": "meridian-diagnostics.pdf",
+      "sha256": "4611137bdaf3a45218781299dc49358e5a2d42d460e20cac17b29ad7719105eb"
+    },
+    {
+      "id": "cedar",
+      "file": "cedar-lab.pdf",
+      "sha256": "fc13ae7feba822a29b8d2db665e45d26faf1d1094feceff09ca184079afd9d82"
+    }
+  ],
+  "deliveries": [
+    {
+      "id": "delivery-meridian",
+      "document": "meridian",
+      "date": "2026-10-10",
+      "channel": "Simulated lab delivery"
+    },
+    {
+      "id": "delivery-cedar",
+      "document": "cedar",
+      "date": "2026-10-18",
+      "channel": "Simulated email copy"
+    }
+  ]
+}
