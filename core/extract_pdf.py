@@ -507,6 +507,35 @@ def parse_synthetic(all_lines: list[dict[str, Any]], provider: str) -> dict[str,
     }
 
 
+NON_BIOMARKER_RE = re.compile(
+    r"(alcald[ií]a|delegaci[oó]n|\bc\.?p\.?\s*\d|\bcol\.\s|lapi,\s*s\.?\s*a\.?|rosa\s+blanca|"
+    r"molino\s+de\s+rosas|puente\s+de\s+piedra|tlalpan|\bcdmx\b|\btel\s*:|"
+    r"ced\.?\s*prof|c[eé]dula|atentamente|universidad|instituto\s+polit[eé]cnico|"
+    r"ver\s+alcance|cap\s+accredited|consultaema|https?://|www\.|"
+    r"\bp[aá]gina\b|\bp[aá]g\s*:|\brfc\b|impresi[oó]n|responsable\s+sanitario|"
+    r"promocion\s+lapifan|sindrome\s+metabolico|s[ií]ndrome\s+metab[oó]lico|"
+    r"resultados\s+verificados|resultados\s+parciales|miguel$|"
+    r"^\s*nota\s*:|^\s*positivo\s*:|^\s*negativo\s*:|contacto\s+con\s+vih)",
+    re.IGNORECASE,
+)
+
+
+def is_noise_analyte(raw_name: str | None, value_text: str | None = None, excerpt: str | None = None) -> bool:
+    name = (raw_name or "").strip()
+    if not name or len(name) < 2:
+        return True
+    if NON_BIOMARKER_RE.search(name):
+        return True
+    if excerpt and NON_BIOMARKER_RE.search(excerpt):
+        # Allow legitimate notes only if name itself is a real analyte (e.g. Aldosterone/Renin)
+        if "aldosterona" not in name.lower():
+            return True
+    # Reject pure punctuation/digits or postal-code-like names
+    if re.fullmatch(r"[\d\s.,:/-]+", name):
+        return True
+    return False
+
+
 def _lms_detect_section(text: str, current_panel: str, current_specimen: str) -> tuple[str, str] | None:
     u = text.upper().strip()
     if "EXAMEN GENERAL DE ORINA" in u:
@@ -571,7 +600,27 @@ LMS_UNITS_PATTERN = (
 
 
 def _split_lms_measurement_line(line_text: str) -> dict[str, Any] | None:
-    """Parse an LMS/MCL measurement row ending in 'LMS' or 'MCL'."""
+    """Parse an LMS/MCL measurement row ending in 'LMS' or 'MCL' (or trailing value after center code)."""
+    # Handle PDF column-order variant where numeric value trails the LMS/MCL token:
+    # e.g. "COLESTEROL LDL (Cálculo) Metodología:Calculado mg/dL <130 LMS 128"
+    m_trail = re.match(
+        rf"^(?P<prefix>.*?)\s+(?P<unit>{LMS_UNITS_PATTERN})\b\s*(?P<ref>.*?)\s+(?P<center>LMS|MCL)\s+"
+        rf"(?P<val>(?:<=|>=|<|>)?\s*\d+(?:[.,]\d+)?)\s*$",
+        line_text,
+        re.IGNORECASE,
+    )
+    if m_trail:
+        val_str = re.sub(r"\s+", " ", m_trail.group("val").strip())
+        prefix = re.sub(r"\s+Metodolog[ií]a\s*:.*$", "", m_trail.group("prefix").strip(), flags=re.IGNORECASE).strip()
+        return {
+            "prefix": prefix,
+            "valueText": val_str,
+            "valueNum": parse_num(val_str),
+            "unitRaw": m_trail.group("unit").strip(),
+            "refText": m_trail.group("ref").strip() or None,
+            "center": m_trail.group("center"),
+        }
+
     m_center = re.search(r"\s+(LMS|MCL)\s*$", line_text)
     if not m_center:
         return None
@@ -832,8 +881,12 @@ def parse_lms(pages: list[dict[str, Any]], provider: str) -> dict[str, Any]:
                 # Never grab lines that come AFTER a Metodología line
                 if idx > first_method_idx:
                     break
-                t = l_text = blk_lines[idx]["text"].strip()
+                t = blk_lines[idx]["text"].strip()
                 if not t:
+                    continue
+                if re.search(r"\s+(LMS|MCL)\s*$", t):
+                    continue
+                if is_noise_analyte(t):
                     continue
                 if (
                     len(t) > 58
@@ -849,7 +902,11 @@ def parse_lms(pages: list[dict[str, Any]], provider: str) -> dict[str, Any]:
                     continue
                 if _lms_detect_section(t, panel, specimen) and not any(k in t.upper() for k in ("ALDOSTERONA", "RENINA", "METANEFRINA")):
                     continue
-                # If an orphan line appears BEFORE a valid prefix on m_idx and already looks like a complete unrelated analyte name, skip
+                # If m_idx already has a prefix, only accept an immediate wrapped continuation (no digits, not a new panel header)
+                if prefix and prefix.lower() != "resultado":
+                    if idx > m_idx:
+                        if re.search(r"\d", t) or len(t) > 34 or re.match(r"^(HEMOGLOBINA GLUCOSILADA|PERFIL|QUIMICA|EXAMEN|BIOMETRIA)", t, re.IGNORECASE):
+                            continue
                 name_parts.append(t)
 
             if prefix and prefix.lower() != "resultado":
@@ -859,6 +916,7 @@ def parse_lms(pages: list[dict[str, Any]], provider: str) -> dict[str, Any]:
                     raw_name = " ".join(name_parts + [prefix]).strip()
             else:
                 raw_name = " ".join(name_parts).strip() or prefix
+            raw_name = re.sub(r"\s+Metodolog[ií]a\s*:.*$", "", raw_name, flags=re.IGNORECASE).strip()
 
             # Special ref extraction for Renin (normal sodium diet) if refText was empty
             ref_text = parsed["refText"]
@@ -1041,10 +1099,29 @@ def parse_lapi_main(pages: list[dict[str, Any]], provider: str) -> dict[str, Any
             if not in_body:
                 i += 1
                 continue
+            # Geometry guard: LAPI footer/accreditation/address block lives at y > 0.88
+            box = l.get("box")
+            if box and len(box) >= 2 and float(box[1]) > 0.88:
+                i += 1
+                continue
+            # Stop body parsing when reaching LAPI footer or legal/signature block
+            if re.search(r"(ver\s+alcance|lapi,\s*s\.?\s*a\.?|rosa\s+blanca|alcald[ií]a\s+[aá]lvaro|atentamente|responsable\s+sanitario|ced\.?\s*prof|universidad\s+aut[oó]noma)", t, re.IGNORECASE):
+                i += 1
+                continue
             if t == "Brincos" or t == "*" or re.fullmatch(r"\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}:\d{2}", t):
                 i += 1
                 continue
+            # Section header (check BEFORE noise filter so "- RIESGO DE SINDROME METABOLICO -" updates panel/specimen!)
+            sec = _lapi_section_update(t, cur_panel, cur_specimen)
+            if sec and (t.startswith("-") or len(t) < 42) and not re.search(r"\d", t):
+                cur_panel, cur_specimen = sec
+                i += 1
+                continue
+
             if any(low.startswith(p) for p in LAPI_TIER_PREFIXES):
+                i += 1
+                continue
+            if is_noise_analyte(t):
                 i += 1
                 continue
             # Skip wrapped lowercase explanatory prose sentences
@@ -1066,21 +1143,14 @@ def parse_lapi_main(pages: list[dict[str, Any]], provider: str) -> dict[str, Any
                 i += 1
                 continue
 
-            # Section header
-            sec = _lapi_section_update(t, cur_panel, cur_specimen)
-            if sec and (t.startswith("-") or len(t) < 42) and not re.search(r"\d", t):
-                cur_panel, cur_specimen = sec
-                i += 1
-                continue
-
             if low in LAPI_METHOD_LINES:
                 cur_method = t
                 i += 1
                 continue
 
             # Special LAPI Blood Pressure row:
-            # Either two lines ("Presión Arterial Menor a 130/85" + "125/69 mm/Hg")
-            # OR Y-merged single line ("Presión Arterial 125/69 mm/Hg Menor a 130/85")
+            # Either two lines ("Presión Arterial Menor a 130/85" + "118/76 mm/Hg")
+            # OR Y-merged single line ("Presión Arterial 118/76 mm/Hg Menor a 130/85")
             if re.match(r"^Presi[oó]n Arterial", t, re.IGNORECASE):
                 bp_val = None
                 bp_unit = "mm/Hg"
@@ -1169,16 +1239,16 @@ def parse_lapi_main(pages: list[dict[str, Any]], provider: str) -> dict[str, Any
                 i += 1
                 continue
 
-            # Qualitative rows (e.g. "VDRL (Cualitativo) Negativo", "Anti HVC No Reactiva")
+            # Qualitative rows (e.g. "VDRL (Cualitativo) Negativo", "Anti HVC No Reactiva", "Ac. Anti - H.I.V. 1 + 2 No Reactiva No Reactiva")
             # Guard: do NOT trigger on "Proteína C Reactiva (Ultra sensible) 1.10 ..." where digits follow!
             m_qual = re.match(
-                r"^(?P<name>[A-Za-zÁÉÍÓÚÑáéíóúñ0-9()./\s-]{3,55}?)\s+"
-                r"(?P<val>No Reactiva|Reactiva|Negativo|Positivo|Ausentes|Presentes)\s*"
-                r"(?P<rest>(?:No Reactiva|Reactiva|Negativo|Positivo|Ausentes|Presentes)?)$",
+                r"^(?P<name>[A-Za-zÁÉÍÓÚÑáéíóúñ0-9()+./\s-]{3,55}?)\s+"
+                r"(?P<val>No Reactiva|No Reactivo|Reactiva|Reactivo|Negativo|Positivo|Ausentes|Presentes)\s*"
+                r"(?P<rest>(?:No Reactiva|No Reactivo|Reactiva|Reactivo|Negativo|Positivo|Ausentes|Presentes)?)$",
                 t,
                 re.IGNORECASE,
             )
-            if m_qual and not re.match(r"^(Negativo|Positivo|No Reactiva|Reactiva)$", t, re.IGNORECASE):
+            if m_qual and not re.match(r"^(Negativo|Positivo|No Reactiva|No Reactivo|Reactiva|Reactivo)$", t, re.IGNORECASE):
                 observations.append({
                     "rawName": m_qual.group("name").strip(),
                     "specimen": cur_specimen,
@@ -1204,7 +1274,7 @@ def parse_lapi_main(pages: list[dict[str, Any]], provider: str) -> dict[str, Any
             #   Fracción A1C 5.4 Menor a 5.7 %
             #   Colesterol Total 183 Recomendable 130 - 199 mg/dL
             #   Colesterol de Baja Densidad (LDL) 111 Recomendable Menor a 100
-            #   Peso 70.9 Kg
+            #   Peso 72.0 Kg
             #   Medición de Perímetro Abdominal 80.0 cm.
             #   Globulina 2.2 2.3 - 3.4
             m_num = re.match(
@@ -1216,8 +1286,8 @@ def parse_lapi_main(pages: list[dict[str, Any]], provider: str) -> dict[str, Any
                 name = m_num.group("name").strip()
                 val_str = re.sub(r"\s+", " ", m_num.group("val").strip())
                 tail = m_num.group("tail").strip()
-                # Skip non-analyte headers like "QUIMICA INTEGRAL 40" or "Página 1 de 5"
-                if re.match(r"^(QUIMICA|QUÍMICA|P[AÁ]GINA|PERFIL|GRAN SUR|ORDEN)", name, re.IGNORECASE):
+                # Skip non-analyte headers, addresses, licenses, footers
+                if re.match(r"^(QUIMICA|QUÍMICA|P[AÁ]GINA|PERFIL|GRAN SUR|ORDEN)", name, re.IGNORECASE) or is_noise_analyte(name, val_str, t):
                     i += 1
                     continue
 
@@ -1297,34 +1367,47 @@ def parse_lapi_summary(pages: list[dict[str, Any]], provider: str) -> dict[str, 
 
     for idx, l in enumerate(all_lines):
         t = l["text"].strip()
-        if "P A C I E N T E:" in t and idx + 1 < len(all_lines):
-            nxt = all_lines[idx + 1]["text"].strip()
-            m_fn = re.search(r"F/N:\s*(\d{1,2}/\d{1,2}/\d{2,4})", nxt)
-            if m_fn:
-                patient_dob = m_fn.group(1)
-                patient_name = nxt[:m_fn.start()].strip()
-            else:
-                patient_name = nxt
+        if "P A C I E N T E:" in t:
+            # Handle Y-merged "P A C I E N T E: Orden : 123456" or "P A C I E N T E:" followed by patient name on next line
+            m_ord_inline = re.search(r"Orden\s*:?\s*(\d{5,})", t, re.IGNORECASE)
+            if m_ord_inline and not order_number:
+                order_number = m_ord_inline.group(1)
+            if idx + 1 < len(all_lines):
+                nxt = all_lines[idx + 1]["text"].strip()
+                m_fn = re.search(r"F/N:\s*(\d{1,2}/\d{1,2}/\d{2,4})", nxt)
+                if m_fn:
+                    patient_dob = m_fn.group(1)
+                    patient_name = nxt[:m_fn.start()].strip()
+                else:
+                    patient_name = nxt
         if "Sexo:" in t:
             m_sex = re.search(r"Sexo:\s*([A-Za-zÁÉÍÓÚÑ]+)", t, re.IGNORECASE)
             if m_sex:
                 patient_sex = m_sex.group(1)
-        if t == "Orden" and idx + 4 < len(all_lines):
-            for k in range(idx + 1, min(idx + 6, len(all_lines))):
-                if re.fullmatch(r"\d{5,}", all_lines[k]["text"].strip()):
-                    order_number = all_lines[k]["text"].strip()
-                    break
+        if not order_number:
+            m_ord = re.search(r"\bOrden\s*:?\s*(\d{5,})", t, re.IGNORECASE)
+            if m_ord:
+                order_number = m_ord.group(1)
+            elif t == "Orden" and idx + 4 < len(all_lines):
+                for k in range(idx + 1, min(idx + 6, len(all_lines))):
+                    if re.fullmatch(r"\d{5,}", all_lines[k]["text"].strip()):
+                        order_number = all_lines[k]["text"].strip()
+                        break
 
     observations: list[dict[str, Any]] = []
     findings: list[dict[str, Any]] = []
 
     def add_obs(raw_name: str, val_text: str, unit_raw: str | None, specimen: str, panel: str, line_obj: dict[str, Any]):
+        val_clean = val_text.strip()
+        # Sanity check: numeric or BP value only in summary observations
+        if not (re.fullmatch(r"\d+(?:\.\d+)?", val_clean) or re.fullmatch(r"\d{2,3}/\d{2,3}", val_clean)):
+            return
         observations.append({
             "rawName": raw_name,
             "specimen": specimen,
             "panel": panel,
-            "valueNum": parse_num(val_text),
-            "valueText": val_text,
+            "valueNum": parse_num(val_clean),
+            "valueText": val_clean,
             "unitRaw": unit_raw,
             "refText": None,
             "method": None,
@@ -1332,47 +1415,99 @@ def parse_lapi_summary(pages: list[dict[str, Any]], provider: str) -> dict[str, 
             "page": line_obj["page"],
             "lineIndex": line_obj["line"],
             "bbox": line_obj["box"],
-            "excerpt": f"{raw_name}: {val_text} {unit_raw or ''}".strip(),
+            "excerpt": f"{raw_name}: {val_clean} {unit_raw or ''}".strip(),
             "meta": {"summarySource": "ordenextrac"},
         })
 
     for idx, l in enumerate(all_lines):
         t = l["text"].strip()
-        # Stacked row: "Peso Talla Presión" / "70.9 1.73 125/69" / "Kg m mm/Hg"
-        if "Peso" in t and "Talla" in t and idx + 2 < len(all_lines):
+        # Skip footer/notes
+        box = l.get("box")
+        if box and len(box) >= 2 and float(box[1]) > 0.88:
+            continue
+        if re.match(r"^(NOTA:|Positivo:|Negativo:|1/1|MIGUEL)", t, re.IGNORECASE):
+            continue
+
+        # 1. Y-merged single-line Peso/Talla/Presión: "Peso Talla Presión 72.0 1.75 118/76 Kg m mm/Hg"
+        m_ptp = re.search(
+            r"Peso\s+Talla\s+Presi[oó]n\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d{2,3}/\d{2,3})\s*(Kg|kg)?\s*(m|cm)?\s*(mm/?Hg)?",
+            t,
+            re.IGNORECASE,
+        )
+        if m_ptp:
+            add_obs("Peso", m_ptp.group(1), m_ptp.group(4) or "Kg", "vitals", "Vitals & Anthropometrics", l)
+            add_obs("Talla", m_ptp.group(2), m_ptp.group(5) or "m", "vitals", "Vitals & Anthropometrics", l)
+            add_obs("Presión Arterial", m_ptp.group(3), m_ptp.group(6) or "mm/Hg", "vitals", "Vitals & Anthropometrics", l)
+            continue
+        # Stacked fallback for pypdf (unmerged)
+        if "Peso" in t and "Talla" in t and not re.search(r"\d", t) and idx + 2 < len(all_lines):
             vals = all_lines[idx + 1]["text"].split()
             units = all_lines[idx + 2]["text"].split()
             if len(vals) >= 3:
                 add_obs("Peso", vals[0], units[0] if len(units) > 0 else "Kg", "vitals", "Vitals & Anthropometrics", all_lines[idx + 1])
                 add_obs("Talla", vals[1], units[1] if len(units) > 1 else "m", "vitals", "Vitals & Anthropometrics", all_lines[idx + 1])
                 add_obs("Presión Arterial", vals[2], units[2] if len(units) > 2 else "mm/Hg", "vitals", "Vitals & Anthropometrics", all_lines[idx + 1])
-        elif "Perímetro Abdominal" in t and idx + 2 < len(all_lines):
-            val = all_lines[idx + 1]["text"].strip()
-            unit = all_lines[idx + 2]["text"].strip()
-            add_obs("Medición de Perímetro Abdominal", val, unit, "vitals", "Vitals & Anthropometrics", all_lines[idx + 1])
-        elif t == "Glucosa" and idx + 2 < len(all_lines):
+            continue
+
+        # 2. Perímetro Abdominal (single-line or stacked)
+        m_waist = re.search(r"Per[ií]metro\s+Abdominal\s+(\d+(?:\.\d+)?)\s*(cm\.?)?", t, re.IGNORECASE)
+        if m_waist:
+            add_obs("Medición de Perímetro Abdominal", m_waist.group(1), m_waist.group(2) or "cm.", "vitals", "Vitals & Anthropometrics", l)
+            continue
+        if "Perímetro Abdominal" in t and not re.search(r"\d", t) and idx + 2 < len(all_lines):
+            add_obs("Medición de Perímetro Abdominal", all_lines[idx + 1]["text"].strip(), all_lines[idx + 2]["text"].strip(), "vitals", "Vitals & Anthropometrics", all_lines[idx + 1])
+            continue
+
+        # 3. Glucosa (single-line or stacked)
+        m_glu = re.match(r"^Glucosa\s+(\d+(?:\.\d+)?)\s*(mg/dL)?$", t, re.IGNORECASE)
+        if m_glu:
+            add_obs("Glucosa", m_glu.group(1), m_glu.group(2) or "mg/dL", "serum", "Glucose & Metabolic", l)
+            continue
+        if t == "Glucosa" and idx + 2 < len(all_lines):
             add_obs("Glucosa", all_lines[idx + 1]["text"].strip(), all_lines[idx + 2]["text"].strip(), "serum", "Glucose & Metabolic", all_lines[idx + 1])
-        elif t.startswith("Triglic") and idx + 5 < len(all_lines) and "H.D.L" in all_lines[idx + 1]["text"]:
+            continue
+
+        # 4. Triglicéridos & H.D.L. (single-line or stacked)
+        m_trig = re.match(r"^Triglic[eé]ridos\s+(\d+(?:\.\d+)?)\s*(mg/dL)?$", t, re.IGNORECASE)
+        if m_trig:
+            add_obs("Triglicéridos", m_trig.group(1), m_trig.group(2) or "mg/dL", "serum", "Lipids", l)
+            continue
+        m_hdl = re.match(r"^H\.?D\.?L\.?\s+(\d+(?:\.\d+)?)\s*(mg/dL)?$", t, re.IGNORECASE)
+        if m_hdl:
+            add_obs("H.D.L.", m_hdl.group(1), m_hdl.group(2) or "mg/dL", "serum", "Lipids", l)
+            continue
+        if t.startswith("Triglic") and not re.search(r"\d", t) and idx + 5 < len(all_lines) and "H.D.L" in all_lines[idx + 1]["text"]:
             add_obs("Triglicéridos", all_lines[idx + 2]["text"].strip(), all_lines[idx + 4]["text"].strip(), "serum", "Lipids", all_lines[idx + 2])
             add_obs("H.D.L.", all_lines[idx + 3]["text"].strip(), all_lines[idx + 5]["text"].strip(), "serum", "Lipids", all_lines[idx + 3])
-        elif "RIESGO DE SINDROME METABOLICO" in t.upper() and t.startswith("-") and idx + 1 < len(all_lines):
-            result_label = all_lines[idx + 1]["text"].strip()
-            criteria = ""
-            for k in range(idx + 2, min(idx + 6, len(all_lines))):
-                if all_lines[k]["text"].strip().lower().startswith(result_label.lower()[:4]):
-                    criteria = all_lines[k]["text"].strip()
-                    break
-            summary = f"Metabolic Syndrome Risk: {result_label}" + (f" ({criteria})" if criteria else "")
-            findings.append({
-                "findingType": "metabolic_syndrome_risk",
-                "title": "Metabolic Syndrome Risk Assessment (LAPI)",
-                "summary": summary,
-                "followupPlan": None,
-                "collectedAt": collected_at,
-                "page": all_lines[idx + 1]["page"],
-                "bbox": all_lines[idx + 1]["box"],
-                "excerpt": f"{t} {result_label}",
-            })
+            continue
+
+        # 5. Metabolic Syndrome Risk Finding (single-line "- RIESGO DE SINDROME METABOLICO - NEGATIVO" OR two-line)
+        m_met = re.search(r"-\s*RIESGO DE SINDROME METABOLICO\s*-\s*(NEGATIVO|POSITIVO)?", t, re.IGNORECASE)
+        if m_met:
+            result_label = (m_met.group(1) or "").strip()
+            ref_line = l
+            if not result_label and idx + 1 < len(all_lines):
+                cand = all_lines[idx + 1]["text"].strip()
+                if re.match(r"^(NEGATIVO|POSITIVO)$", cand, re.IGNORECASE):
+                    result_label = cand
+                    ref_line = all_lines[idx + 1]
+            if result_label:
+                criteria = ""
+                for k in range(idx + 1, len(all_lines)):
+                    if all_lines[k]["text"].strip().lower().startswith(result_label.lower()[:4] + ":"):
+                        criteria = all_lines[k]["text"].strip()
+                        break
+                summary = f"Metabolic Syndrome Risk: {result_label.upper()}" + (f" ({criteria})" if criteria else "")
+                findings.append({
+                    "findingType": "metabolic_syndrome_risk",
+                    "title": "Metabolic Syndrome Risk Assessment (LAPI)",
+                    "summary": summary,
+                    "followupPlan": None,
+                    "collectedAt": collected_at,
+                    "page": ref_line["page"],
+                    "bbox": ref_line["box"],
+                    "excerpt": f"{t} {result_label}".strip() if result_label not in t else t,
+                })
 
     return {
         "provider": provider,
@@ -1508,6 +1643,13 @@ def extract_pdf(pdf_path: Path, pages_dir: Path | None = None, doc_prefix: str =
         parsed = parse_lapi_summary(pages, provider)
     else:
         parsed = parse_generic(pages, provider)
+
+    # Final defensive filter across all parsers: strip any address/footer/signature/legal noise
+    if not parsed.get("isSyntheticDemo"):
+        parsed["observations"] = [
+            obs for obs in (parsed.get("observations") or [])
+            if not is_noise_analyte(obs.get("rawName"), obs.get("valueText"), obs.get("excerpt"))
+        ]
 
     parsed["status"] = "extracted"
     parsed["filename"] = pdf_path.name

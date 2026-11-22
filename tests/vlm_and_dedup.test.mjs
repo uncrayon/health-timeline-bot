@@ -27,8 +27,8 @@ test("VLM photo path: ingestFile on .png returns needs_vlm_extraction; commitExt
   try {
     saveProfile(
       {
-        fullName: "Ulises Test User",
-        aliases: ["TEST USER, ULISES", "TEST USER ULISES"],
+        fullName: "Alex Rivera",
+        aliases: ["RIVERA, ALEX", "RIVERA ALEX"],
         dob: "1992-04-10",
         biologicalSex: "male",
         country: "MX",
@@ -54,7 +54,7 @@ test("VLM photo path: ingestFile on .png returns needs_vlm_extraction; commitExt
         reportStatus: "FINAL",
         docType: "lab_photo",
         pageCount: 1,
-        patient: { nameRaw: "TEST USER, ULISES", dobRaw: "10/04/1992", sexRaw: "M" },
+        patient: { nameRaw: "RIVERA, ALEX", dobRaw: "10/04/1992", sexRaw: "M" },
         collectedAt: "2026-03-15",
         reportedAt: "2026-03-15",
         observations: [
@@ -126,8 +126,8 @@ test("deduplication: FINAL supersedes PARCIAL and companion summary deduplicates
   try {
     saveProfile(
       {
-        fullName: "Ulises Test User",
-        aliases: ["TEST USER, ULISES"],
+        fullName: "Alex Rivera",
+        aliases: ["RIVERA, ALEX"],
         dob: "1992-04-10",
         biologicalSex: "male",
         country: "MX",
@@ -138,11 +138,11 @@ test("deduplication: FINAL supersedes PARCIAL and companion summary deduplicates
     // 1. PARCIAL report
     const parcial = await commitExtractedDocument(
       {
-        filename: "order-275-parcial.pdf",
+        filename: "order-1001-parcial.pdf",
         provider: "LMS",
-        orderNumber: "2605110275",
+        orderNumber: "ORD-1001",
         reportStatus: "PARCIAL",
-        patient: { nameRaw: "TEST USER, ULISES", dobRaw: "10/04/1992" },
+        patient: { nameRaw: "RIVERA, ALEX", dobRaw: "10/04/1992" },
         collectedAt: "2026-05-11T08:00:00",
         reportedAt: "2026-05-11T10:00:00",
         observations: [
@@ -175,11 +175,11 @@ test("deduplication: FINAL supersedes PARCIAL and companion summary deduplicates
     // 2. FINAL report for same orderNumber
     const finalDoc = await commitExtractedDocument(
       {
-        filename: "order-275-final.pdf",
+        filename: "order-1001-final.pdf",
         provider: "LMS",
-        orderNumber: "2605110275",
+        orderNumber: "ORD-1001",
         reportStatus: "FINAL",
-        patient: { nameRaw: "TEST USER, ULISES", dobRaw: "10/04/1992" },
+        patient: { nameRaw: "RIVERA, ALEX", dobRaw: "10/04/1992" },
         collectedAt: "2026-05-11T08:00:00",
         reportedAt: "2026-05-11T13:00:00",
         observations: [
@@ -229,12 +229,12 @@ test("deduplication: FINAL supersedes PARCIAL and companion summary deduplicates
     // 3. Companion summary (ordenextrac) for LAPI order
     const lapiMain = await commitExtractedDocument(
       {
-        filename: "ordenc_695710.pdf",
+        filename: "ordenc_123456.pdf",
         provider: "LAPI",
-        orderNumber: "695710",
+        orderNumber: "123456",
         reportStatus: "FINAL",
         docType: "lab_report",
-        patient: { nameRaw: "TEST USER ULISES Dr.", dobRaw: "10/04/1992" },
+        patient: { nameRaw: "RIVERA ALEX Dr.", dobRaw: "10/04/1992" },
         collectedAt: "2025-11-27T08:30:00",
         observations: [
           {
@@ -263,12 +263,12 @@ test("deduplication: FINAL supersedes PARCIAL and companion summary deduplicates
 
     const lapiExtra = await commitExtractedDocument(
       {
-        filename: "ordenextrac_695710.pdf",
+        filename: "ordenextrac_123456.pdf",
         provider: "LAPI",
-        orderNumber: "695710",
+        orderNumber: "123456",
         reportStatus: "SUMMARY",
         docType: "lab_summary",
-        patient: { nameRaw: "TEST USER ULISES", dobRaw: "10/04/92" },
+        patient: { nameRaw: "RIVERA ALEX", dobRaw: "10/04/92" },
         collectedAt: "2025-11-27T08:30:00",
         observations: [
           {
@@ -300,7 +300,7 @@ test("deduplication: FINAL supersedes PARCIAL and companion summary deduplicates
     assert.equal(
       glucoseTrend.points.length,
       1,
-      `Expected 1 deduplicated serum:glucose point for LAPI order 695710, got ${glucoseTrend.points.length}`,
+      `Expected 1 deduplicated serum:glucose point for LAPI order 123456, got ${glucoseTrend.points.length}`,
     );
 
     const timeline = getTimeline({}, opts);

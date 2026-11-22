@@ -155,6 +155,17 @@ function stageSourceCopy(sourcePath, docId, filename, opts = {}) {
   return dest;
 }
 
+const NON_BIOMARKER_NAME_RE =
+  /(alcald[ií]a|delegaci[oó]n|\bc\.?p\.?\s*\d|\bcol\.\s|lapi,\s*s\.?\s*a\.?|rosa\s+blanca|molino\s+de\s+rosas|puente\s+de\s+piedra|tlalpan|\bcdmx\b|\btel\s*:|ced\.?\s*prof|c[eé]dula|atentamente|universidad|instituto\s+polit[eé]cnico|ver\s+alcance|cap\s+accredited|consultaema|https?:\/\/|www\.|\bp[aá]gina\b|\bp[aá]g\s*:|\brfc\b|impresi[oó]n|responsable\s+sanitario|promocion\s+lapifan|resultados\s+verificados|resultados\s+parciales)/i;
+
+function isNoiseObservation(obs) {
+  const rawName = String(obs?.rawName || "").trim();
+  if (!rawName && !obs?.canonicalKey) return true;
+  if (rawName && NON_BIOMARKER_NAME_RE.test(rawName)) return true;
+  if (rawName && /^[\d\s.,:/-]+$/.test(rawName)) return true;
+  return false;
+}
+
 export async function commitExtractedDocument(payload, opts = {}) {
   if (!payload || typeof payload !== "object") {
     return {
@@ -373,7 +384,7 @@ export async function commitExtractedDocument(payload, opts = {}) {
 
       for (let idx = 0; idx < rawObservations.length; idx++) {
         const obs = rawObservations[idx];
-        if (!obs || (!obs.rawName && !obs.canonicalKey)) continue;
+        if (!obs || isNoiseObservation(obs)) continue;
 
         const resolved = obs.canonicalKey
           ? resolveAnalyte(obs.rawName || obs.canonicalKey, obs.specimen || obs.canonicalKey.split(":")[0], obs.unitRaw, obs.panel, obs.method)

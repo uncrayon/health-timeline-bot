@@ -6,6 +6,7 @@ function cleanText(raw) {
     .toLowerCase()
     .replace(/[^a-z0-9%+/.\s-]/g, " ")
     .replace(/\s+/g, " ")
+    .replace(/^[-.\s]+|[-.\s]+$/g, "")
     .trim();
 }
 
@@ -227,6 +228,7 @@ export const ANALYTE_CATALOG = [
     defaultUnit: "ratio",
     aliases: [
       "relacion ldl/hdl", "relacion ldl / hdl", "relacion colesterol ldl/hdl",
+      "relacion colesterol-ldl/colesterol", "relacion colesterol-ldl/colesterol-hdl",
       "colesterol ldl/hdl", "indice ldl/hdl", "ldl/hdl ratio", "ldl/hdl",
     ],
   },
@@ -268,8 +270,10 @@ export const ANALYTE_CATALOG = [
     specimen: "serum",
     defaultUnit: "ratio",
     aliases: [
-      "indice aterogenico", "relacion colesterol total/hdl", "indice de castelli",
-      "atherogenic index", "total cholesterol/hdl ratio", "colesterol total / hdl",
+      "indice aterogenico", "relacion colesterol total/hdl",
+      "relacion colesterol total/colesterol", "relacion colesterol total/colesterol hdl",
+      "indice de castelli", "atherogenic index", "total cholesterol/hdl ratio",
+      "colesterol total / hdl",
     ],
   },
   {
@@ -408,7 +412,7 @@ export const ANALYTE_CATALOG = [
     defaultUnit: "g/dL",
     aliases: [
       "concentracion media de hemoglobina", "concentracion media de hemoglobina corpuscular",
-      "concentracion media de hb", "cmhc", "cmhg", "chcm", "mchc",
+      "concentracion media de hb", "concentracion media de", "cmhc", "cmhg", "chcm", "mchc",
     ],
   },
   {
@@ -551,6 +555,7 @@ export const ANALYTE_CATALOG = [
     defaultUnit: "mL/min/1.73m2",
     aliases: [
       "tfge", "tasa de filtracion glomerular", "tasa de filtracion glomerular estimada",
+      "tasa filt. glomerular", "tasa filt glomerular",
       "depuracion de creatinina calculada", "filtracion glomerular", "egfr", "gfr",
       "ckd-epi", "tasa de filtrado glomerular",
     ],
@@ -563,7 +568,7 @@ export const ANALYTE_CATALOG = [
     defaultUnit: "mg/dL",
     aliases: [
       "nitrogeno ureico", "nitrogeno ureico en sangre", "nitrogeno ureico (bun)",
-      "bun", "blood urea nitrogen",
+      "nitrogeno de urea", "bun", "blood urea nitrogen",
     ],
     excludeSubstrings: ["creatinina", "relacion"],
   },
@@ -573,7 +578,7 @@ export const ANALYTE_CATALOG = [
     panel: "Kidney & Electrolytes",
     specimen: "serum",
     defaultUnit: "mg/dL",
-    aliases: ["urea", "urea en suero", "harnstoff"],
+    aliases: ["urea", "urea en suero", "urea serica", "harnstoff"],
     excludeSubstrings: ["nitrogeno"],
   },
   {
@@ -582,7 +587,10 @@ export const ANALYTE_CATALOG = [
     panel: "Kidney & Electrolytes",
     specimen: "serum",
     defaultUnit: "ratio",
-    aliases: ["relacion bun/creatinina", "relacion bun / creatinina", "bun/creatinine", "bun/creatinina"],
+    aliases: [
+      "relacion bun/creatinina", "relacion bun / creatinina", "bun/creatinine", "bun/creatinina",
+      "relacion nitrogeno ureico/creatinina", "relacion nitrogeno",
+    ],
   },
   {
     canonicalKey: "serum:sodium",
@@ -651,7 +659,7 @@ export const ANALYTE_CATALOG = [
     aliases: [
       "aspartato aminotransferasa", "aspartato aminotransferasa tgo ast",
       "aspartato aminotransferasa (ast)", "aspartato aminotransferasa (tgo)",
-      "tgo", "t.g.o.", "t.g.o. (ast)", "tgo (ast)", "ast", "ast (tgo)", "got",
+      "aspartato", "tgo", "t.g.o.", "t.g.o. (ast)", "tgo (ast)", "ast", "ast (tgo)", "got",
     ],
   },
   {
@@ -674,7 +682,8 @@ export const ANALYTE_CATALOG = [
     defaultUnit: "U/L",
     aliases: [
       "gamma glutamil transferasa", "gama glutamil transferasa",
-      "gamma-glutamil transferasa", "gamma glutamil transpeptidasa",
+      "gamma-glutamil transferasa", "gama-glutamil transpeptidasa",
+      "gamma glutamil transpeptidasa", "gamma-glutamil transpeptidasa",
       "ggt", "g.g.t.", "gamma-gt",
     ],
   },
@@ -752,7 +761,10 @@ export const ANALYTE_CATALOG = [
     panel: "Liver & Pancreas",
     specimen: "serum",
     defaultUnit: "ratio",
-    aliases: ["relacion a/g", "relacion albumina/globulina", "relacion a / g", "a/g ratio", "albumin/globulin ratio"],
+    aliases: [
+      "relacion a/g", "relacion albumina/globulina", "relacion albumina/globulinas",
+      "relacion a / g", "a/g ratio", "albumin/globulin ratio",
+    ],
   },
   {
     canonicalKey: "serum:amylase",
@@ -874,7 +886,7 @@ export const ANALYTE_CATALOG = [
     defaultUnit: "mIU/L",
     aliases: [
       "hormona estimulante de tiroides", "hormona estimulante de la tiroides",
-      "tirotropina", "tsh", "tsh ultrasensible", "tsh (ultrasensible)",
+      "hormona estimulante de", "tirotropina", "tsh", "tsh ultrasensible", "tsh (ultrasensible)",
     ],
   },
   {
@@ -1027,7 +1039,7 @@ export const ANALYTE_CATALOG = [
     panel: "Serology",
     specimen: "serum",
     defaultUnit: null,
-    aliases: ["anti-hcv", "anticuerpos anti hepatitis c", "hepatitis c", "anticuerpos virus hepatitis c", "anti hcv"],
+    aliases: ["anti-hcv", "anti hvc", "anti-hvc", "anticuerpos anti hepatitis c", "hepatitis c", "anticuerpos virus hepatitis c", "anti hcv"],
   },
   {
     canonicalKey: "serum:anti_hiv",
@@ -1036,7 +1048,8 @@ export const ANALYTE_CATALOG = [
     specimen: "serum",
     defaultUnit: null,
     aliases: [
-      "anti-vih", "vih", "hiv", "anti-hiv", "anticuerpos anti vih",
+      "anti-vih", "vih", "hiv", "anti-hiv", "ac. anti - h.i.v.", "ac anti h i v",
+      "ac. anti - h.i.v. 1 + 2", "anticuerpos anti vih",
       "anticuerpos anti-vih 1 y 2", "vih 1 y 2", "anti-vih 1+2", "antígeno p24",
     ],
   },
@@ -1080,7 +1093,7 @@ export const ANALYTE_CATALOG = [
     panel: "Urinalysis",
     specimen: "urine",
     defaultUnit: "mg/dL",
-    aliases: ["cetonas", "cuerpos cetonicos", "ketones"],
+    aliases: ["cetonas", "cetona", "cuerpos cetonicos", "ketones"],
   },
   {
     canonicalKey: "urine:urobilinogen",
@@ -1104,7 +1117,7 @@ export const ANALYTE_CATALOG = [
     panel: "Urinalysis",
     specimen: "urine",
     defaultUnit: null,
-    aliases: ["esterasa leucocitaria", "leukocyte esterase"],
+    aliases: ["esterasa leucocitaria", "leucocitos (esterasa)", "leucocitos esterasa", "leukocyte esterase"],
   },
   {
     canonicalKey: "urine:wbc",
@@ -1113,6 +1126,7 @@ export const ANALYTE_CATALOG = [
     specimen: "urine",
     defaultUnit: "cells/uL",
     aliases: ["leucocitos", "leukocytes", "wbc"],
+    excludeSubstrings: ["esterasa"],
   },
   {
     canonicalKey: "urine:rbc",

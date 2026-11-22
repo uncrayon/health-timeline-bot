@@ -187,9 +187,9 @@ function matchCandidate(docNameRaw, docTokens, candidateRaw, dobCorroborated) {
     return { matched: false, score: 0.2, detail: "insufficient_single_token_alias" };
   }
 
-  // Check if all candidate tokens appear in doc (e.g. profile "Ulises Arredondo" in "ARREDONDO PEREZ, ULISES EDUARDO")
+  // Check if all candidate tokens appear in doc (e.g. profile "Alex Rivera" in "RIVERA GOMEZ, ALEX DANIEL")
   const allCandInDoc = matchedCandTokens.length === candTokens.length;
-  // Check if all doc tokens appear in candidate (e.g. doc "ARREDONDO, ULISES" vs profile "Ulises Eduardo Arredondo Perez")
+  // Check if all doc tokens appear in candidate (e.g. doc "RIVERA, ALEX" vs profile "Alex Daniel Rivera Gomez")
   const allDocInCand = docTokens.length >= 2 && matchedDocTokens.length === docTokens.length;
 
   // Verify at least one given-name token matches AND at least one surname token matches

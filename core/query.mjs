@@ -801,9 +801,17 @@ export function getDashboardPayload(opts = {}) {
   const timeline = getTimeline({}, opts);
   const guidelines = readRegionalGuidelines(opts);
 
-  // Pick smart default biomarker: prefer LDL or Glucose or first multi-point numeric biomarker
+  // Pick smart default biomarker: strictly prefer known canonical multi-point biomarkers (never unmapped fallback noise)
   const allBios = biomarkers.panels.flatMap(p => p.biomarkers);
-  const preferredKeys = ["serum:ldl_direct", "serum:ldl", "serum:glucose", "serum:hba1c", "serum:triglycerides", "blood:hemoglobin"];
+  const preferredKeys = [
+    "serum:ldl_direct",
+    "serum:ldl",
+    "serum:glucose",
+    "serum:hdl",
+    "serum:triglycerides",
+    "serum:hba1c",
+    "blood:hemoglobin",
+  ];
   let defaultBiomarkerKey = null;
   for (const k of preferredKeys) {
     if (allBios.some(b => b.canonicalKey === k && b.numericCount >= 2)) {
@@ -812,8 +820,11 @@ export function getDashboardPayload(opts = {}) {
     }
   }
   if (!defaultBiomarkerKey) {
-    const multi = allBios.find(b => b.numericCount >= 2);
-    defaultBiomarkerKey = multi?.canonicalKey || allBios[0]?.canonicalKey || null;
+    const knownMulti = allBios.find(b => getAnalyteDefinition(b.canonicalKey) !== null && b.numericCount >= 2);
+    const knownSingle = allBios.find(b => getAnalyteDefinition(b.canonicalKey) !== null && b.numericCount >= 1);
+    const anyMulti = allBios.find(b => b.numericCount >= 2);
+    defaultBiomarkerKey =
+      knownMulti?.canonicalKey || knownSingle?.canonicalKey || anyMulti?.canonicalKey || allBios[0]?.canonicalKey || null;
   }
 
   const defaultTrend = defaultBiomarkerKey ? getTrend(defaultBiomarkerKey, opts) : null;

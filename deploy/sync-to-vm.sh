@@ -4,10 +4,15 @@
 #   bash deploy/sync-to-vm.sh [--setup] [--verify] [--clean]
 set -euo pipefail
 
-GCP_PROJECT="${GCP_PROJECT:-computing-ds-mine}"
+GCP_PROJECT="${GCP_PROJECT:-$(gcloud config get-value project 2>/dev/null || true)}"
 GCP_ZONE="${GCP_ZONE:-us-central1-a}"
 VM_NAME="${VM_NAME:-health-timeline-vm}"
 REMOTE_DIR="${REMOTE_DIR:-~/health-timeline}"
+
+if [ -z "${GCP_PROJECT}" ] || [ "${GCP_PROJECT}" = "(unset)" ]; then
+  echo "Error: GCP_PROJECT not set. Export GCP_PROJECT or run: gcloud config set project <your-project-id>" >&2
+  exit 1
+fi
 
 RUN_SETUP=false
 RUN_VERIFY=false
@@ -55,6 +60,7 @@ COPYFILE_DISABLE=1 tar -czf "${TMP_ARCHIVE}" \
   --exclude='*.sqlite-wal' \
   --exclude='*.sqlite-shm' \
   --exclude='private-labs-inbox' \
+  --exclude='demo-video' \
   .
 
 ARCHIVE_SIZE="$(du -h "${TMP_ARCHIVE}" | awk '{print $1}')"

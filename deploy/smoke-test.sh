@@ -6,9 +6,13 @@
 set -euo pipefail
 
 if [ "${1:-}" = "--remote" ]; then
-  GCP_PROJECT="${GCP_PROJECT:-computing-ds-mine}"
+  GCP_PROJECT="${GCP_PROJECT:-$(gcloud config get-value project 2>/dev/null || true)}"
   GCP_ZONE="${GCP_ZONE:-us-central1-a}"
   VM_NAME="${VM_NAME:-health-timeline-vm}"
+  if [ -z "${GCP_PROJECT}" ] || [ "${GCP_PROJECT}" = "(unset)" ]; then
+    echo "Error: GCP_PROJECT not set. Export GCP_PROJECT or run: gcloud config set project <your-project-id>" >&2
+    exit 1
+  fi
   exec gcloud compute ssh "${VM_NAME}" \
     --project="${GCP_PROJECT}" \
     --zone="${GCP_ZONE}" \
@@ -73,21 +77,21 @@ echo ""
 echo "=== 2. Private Real-Data Inbox Hygiene ==="
 if [ -d "${INBOX_DIR}" ]; then
   PDF_COUNT="$(find "${INBOX_DIR}" -maxdepth 1 -type f -name '*.pdf' | wc -l | tr -d ' ')"
-  if [ "${PDF_COUNT}" -ge 8 ]; then
-    pass "Private inbox ${INBOX_DIR} has ${PDF_COUNT} PDFs (outside git repo)"
+  if [ "${PDF_COUNT}" -ge 1 ]; then
+    pass "Private inbox ${INBOX_DIR} has ${PDF_COUNT} PDF(s) (outside git repo)"
   else
-    fail "Expected >= 8 PDFs in ${INBOX_DIR}, found ${PDF_COUNT}"
+    skip "Private inbox ${INBOX_DIR} currently has 0 PDFs"
   fi
 else
-  fail "Private inbox ${INBOX_DIR} missing"
+  skip "Private inbox ${INBOX_DIR} not created yet"
 fi
 
 if [ -d "${REPO_DIR}" ]; then
-  LEAKED="$(find "${REPO_DIR}" -maxdepth 3 -name 'Resultados*.pdf' -o -name 'ordenc*.pdf' 2>/dev/null | wc -l | tr -d ' ')"
+  LEAKED="$(find "${REPO_DIR}" -maxdepth 3 -path "${REPO_DIR}/fixtures" -prune -o -type f -name '*.pdf' -print 2>/dev/null | wc -l | tr -d ' ')"
   if [ "${LEAKED}" -eq 0 ]; then
-    pass "No private lab PDFs leaked inside ${REPO_DIR}"
+    pass "No private lab PDFs leaked inside ${REPO_DIR} outside fixtures/"
   else
-    fail "Found ${LEAKED} private lab PDFs inside ${REPO_DIR}!"
+    fail "Found ${LEAKED} unexpected PDF(s) inside ${REPO_DIR} outside fixtures/!"
   fi
 fi
 

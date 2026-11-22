@@ -13,7 +13,7 @@
  *     --dob "YYYY-MM-DD" \
  *     --sex "male" \
  *     --country "MX" \
- *     --expected-skipped "Resultados2605110274.pdf"
+ *     --expected-skipped "<non-owner-filename.pdf>"
  */
 import assert from "node:assert/strict";
 import { rmSync, mkdirSync, existsSync } from "node:fs";
@@ -51,7 +51,7 @@ if (!args.inbox || !args.name) {
 
 const inboxDir = path.resolve(args.inbox);
 const dataDir = path.resolve(args["data-dir"] || "/tmp/ht-private-verify");
-const expectedSkipped = args["expected-skipped"] || "Resultados2605110274.pdf";
+const expectedSkipped = args["expected-skipped"] || null;
 
 if (existsSync(dataDir)) {
   rmSync(dataDir, { recursive: true, force: true });
@@ -118,8 +118,10 @@ try {
 }
 
 assert.equal(skippedRows.length, 1, `Expected 1 row in skipped_documents, got ${skippedRows.length}`);
-assert.equal(skippedRows[0].filename, expectedSkipped, `Expected ${expectedSkipped} to be skipped, got ${skippedRows[0].filename}`);
-assert.equal(docs.some((d) => d.filename === expectedSkipped), false, "Skipped document must NOT appear in documents table");
+if (expectedSkipped) {
+  assert.equal(skippedRows[0].filename, expectedSkipped, `Expected ${expectedSkipped} to be skipped, got ${skippedRows[0].filename}`);
+  assert.equal(docs.some((d) => d.filename === expectedSkipped), false, "Skipped document must NOT appear in documents table");
+}
 console.log("[4/7] Patient Identity Gate verified: 7 owner PDFs ingested, 1 non-owner skipped with 0 observations.");
 
 // Verify owner-encrypted LAPI PDFs parsed cleanly
@@ -130,9 +132,9 @@ const lapiMainDoc = lapiDocs.find((d) => !d.filename.startsWith("ordenextrac"));
 assert.ok(lapiMainDoc && (obsCountMap.get(lapiMainDoc.id)?.total || 0) > 10, "Expected main LAPI PDF to extract >10 observations");
 
 // Verify PARCIAL superseded by FINAL
-const parcialDoc = docs.find((d) => d.filename === "Resultados2605110275.pdf");
-const finalDoc = docs.find((d) => d.filename === "Resultados2605110275 (1).pdf");
-assert.ok(parcialDoc && finalDoc, "Expected both 2605110275 PARCIAL and FINAL documents");
+const parcialDoc = docs.find((d) => d.report_status === "PARCIAL");
+const finalDoc = parcialDoc ? docs.find((d) => d.id === parcialDoc.superseded_by && d.report_status === "FINAL") : null;
+assert.ok(parcialDoc && finalDoc, "Expected a PARCIAL document superseded by a FINAL document");
 assert.equal(parcialDoc.superseded_by, finalDoc.id, `Expected PARCIAL superseded_by=${finalDoc.id}, got ${parcialDoc.superseded_by}`);
 assert.equal(obsCountMap.get(parcialDoc.id)?.active || 0, 0, "Superseded PARCIAL doc must have 0 active observations");
 
@@ -158,7 +160,7 @@ assert.ok(urineGlucoseKey, `Expected urine:glucose in extracted biomarkers (foun
 
 const serumGlucTrend = getTrend(serumGlucoseKey, opts);
 assert.equal(serumGlucTrend.specimen, "serum", "serum:glucose trend must have specimen=serum");
-// Ensure no duplicate LAPI order 695710 serum:glucose points
+// Ensure no duplicate companion-summary serum:glucose points for the same LAPI order
 const lapiGlucPoints = serumGlucTrend.points.filter((p) => p.orderNumber === lapiMainDoc.order_number);
 assert.ok(lapiGlucPoints.length <= 1, `Expected <=1 active serum:glucose point for LAPI order ${lapiMainDoc.order_number}, got ${lapiGlucPoints.length}`);
 

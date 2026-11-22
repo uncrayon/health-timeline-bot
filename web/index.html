@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#123f30">
+  <meta name="theme-color" content="#0C66E4">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Crect width='28' height='28' rx='6' fill='%230C66E4'/%3E%3Cpath d='M5 15.5h4.2l2.8-7 4 11 2.8-6H23' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <title>Health Timeline · Personal Clinical Record</title>
   <link rel="stylesheet" href="/style.css">
   <script type="module" src="/app.mjs"></script>
@@ -13,211 +14,294 @@
     <div class="shell topbar-inner">
       <div class="topbar-left">
         <a class="brand" href="/">
-          <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
-          <span>Health Timeline</span>
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 20 20" width="16" height="16" fill="none">
+              <path d="M2.5 11.2h3.1l2.1-5.4 3.1 8.4 2.2-4.6h4.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="brand-name">Health Timeline</span>
         </a>
-        <span class="patient-chip" id="patient-chip" hidden></span>
+        <span class="topbar-divider" aria-hidden="true"></span>
+        <span class="patient-chip" id="patient-chip" hidden>
+          <span class="patient-avatar" id="patient-avatar" aria-hidden="true">HT</span>
+          <span class="patient-chip-text" id="patient-chip-text"></span>
+        </span>
       </div>
       <div class="topbar-actions">
-        <button type="button" class="guideline-btn" id="open-guidelines-btn" aria-haspopup="dialog">
-          <span class="dot" id="guideline-dot" aria-hidden="true"></span>
+        <button type="button" class="ads-btn ads-btn-subtle guideline-btn" id="open-guidelines-btn" aria-haspopup="dialog">
+          <span class="status-dot" id="guideline-dot" aria-hidden="true"></span>
           <span id="guideline-btn-label">Regional Guidelines</span>
         </button>
-        <button type="button" class="upload-btn" id="open-upload-btn" aria-haspopup="dialog">
-          <span aria-hidden="true">+</span> Upload PDF / Photo
+        <button type="button" class="ads-btn ads-btn-primary upload-btn" id="open-upload-btn" aria-haspopup="dialog">
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true">
+            <path d="M8 3.25v9.5M3.25 8h9.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span>Upload PDF / Photo</span>
         </button>
       </div>
     </div>
   </header>
 
-  <main class="shell">
+  <main class="shell main-shell">
     <section class="overview-band" aria-labelledby="overview-headline">
-      <div class="overview-top">
-        <div class="overview-copy">
-          <p class="eyebrow" id="overview-eyebrow">Local-first longitudinal health record</p>
+      <div class="page-head">
+        <div class="page-head-copy">
+          <p class="breadcrumb" id="overview-eyebrow">Personal Clinical Record / Longitudinal Overview</p>
           <h1 id="overview-headline">Health Timeline</h1>
           <p class="overview-lead" id="overview-summary" role="status">Loading longitudinal lab records…</p>
         </div>
-        <div class="stat-strip" id="stat-strip" aria-label="Record summary counts" hidden>
-          <div class="stat-item">
-            <span class="stat-value" id="stat-studies">0</span>
-            <span class="stat-label">Studies</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-value" id="stat-providers">0</span>
-            <span class="stat-label">Providers</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-value" id="stat-biomarkers">0</span>
-            <span class="stat-label">Biomarkers</span>
-          </div>
-          <div class="stat-item stat-item-shield" id="stat-skipped-box">
-            <span class="stat-value" id="stat-skipped">0</span>
-            <span class="stat-label">Skipped Non-Owner</span>
-          </div>
-        </div>
       </div>
 
-      <div class="summary-grid" id="summary-grid" hidden>
-        <article class="summary-card" aria-labelledby="changes-heading">
-          <header class="summary-card-head">
-            <h2 id="changes-heading">Recent changes</h2>
-            <span class="micro-pill" id="changes-count"></span>
-          </header>
-          <ul class="compact-list" id="changes-list"></ul>
+      <div class="kpi-grid" id="stat-strip" aria-label="Record summary metrics" hidden>
+        <article class="kpi-card kpi-brand">
+          <div class="kpi-head">
+            <span class="kpi-label">Studies &amp; Providers</span>
+            <span class="lozenge lozenge-info" id="kpi-providers-badge">0 labs</span>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value" id="stat-studies">0</span>
+            <span class="kpi-unit">active studies</span>
+          </div>
+          <p class="kpi-foot" id="kpi-studies-foot">Ordered strictly by collection date</p>
+          <span id="stat-providers" hidden>0</span>
         </article>
 
-        <article class="summary-card" aria-labelledby="flags-heading">
-          <header class="summary-card-head">
-            <h2 id="flags-heading">Out-of-range flags</h2>
-            <span class="micro-pill micro-pill-warn" id="flags-count"></span>
-          </header>
-          <ul class="compact-list" id="flags-list"></ul>
+        <article class="kpi-card kpi-discovery">
+          <div class="kpi-head">
+            <span class="kpi-label">Canonical Biomarkers</span>
+            <span class="lozenge lozenge-discovery" id="kpi-obs-badge">0 pts</span>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value" id="stat-biomarkers">0</span>
+            <span class="kpi-unit">normalized markers</span>
+          </div>
+          <p class="kpi-foot" id="kpi-bio-foot">Specimen-scoped &amp; unit-normalized</p>
         </article>
 
-        <article class="summary-card" aria-labelledby="findings-heading">
-          <header class="summary-card-head">
-            <h2 id="findings-heading">Findings &amp; follow-ups</h2>
-            <span class="micro-pill" id="findings-count"></span>
-          </header>
-          <ul class="compact-list" id="findings-list"></ul>
+        <article class="kpi-card kpi-flags" id="kpi-flags-card">
+          <div class="kpi-head">
+            <span class="kpi-label">Flagged Results</span>
+            <span class="lozenge lozenge-neutral" id="kpi-flags-badge">LAB RANGE</span>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value" id="stat-flagged">0</span>
+            <span class="kpi-unit">out of range</span>
+          </div>
+          <p class="kpi-foot" id="kpi-flags-foot">Evaluated against printed assay ranges</p>
+        </article>
+
+        <article class="kpi-card kpi-gate" id="stat-skipped-box">
+          <div class="kpi-head">
+            <span class="kpi-label">Patient Identity Gate</span>
+            <span class="lozenge lozenge-success" id="kpi-gate-badge">PROTECTED</span>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value" id="stat-skipped">0</span>
+            <span class="kpi-unit">non-owner blocked</span>
+          </div>
+          <p class="kpi-foot" id="kpi-gate-foot">0 measurements stored from non-owners</p>
+        </article>
+      </div>
+
+      <div class="section-messages-grid" id="summary-grid" hidden>
+        <article class="section-msg section-msg-info" aria-labelledby="changes-heading">
+          <div class="section-msg-icon" aria-hidden="true">
+            <svg viewBox="0 0 20 20" width="20" height="20" fill="none">
+              <circle cx="10" cy="10" r="8" fill="#0C66E4"/>
+              <path d="M10 9v4.5M10 6.5h.01" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="section-msg-content">
+            <header class="section-msg-head">
+              <h2 id="changes-heading">Recent longitudinal changes</h2>
+              <span class="lozenge lozenge-info" id="changes-count">0</span>
+            </header>
+            <ul class="msg-list" id="changes-list"></ul>
+          </div>
+        </article>
+
+        <article class="section-msg section-msg-danger" id="flags-msg-card" aria-labelledby="flags-heading">
+          <div class="section-msg-icon" aria-hidden="true">
+            <svg viewBox="0 0 20 20" width="20" height="20" fill="none">
+              <path d="M10 2.6L18 16.5H2L10 2.6Z" fill="#CA3521"/>
+              <path d="M10 7.5v4.2M10 14h.01" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="section-msg-content">
+            <header class="section-msg-head">
+              <h2 id="flags-heading">Out-of-range flags</h2>
+              <span class="lozenge lozenge-danger" id="flags-count">0</span>
+            </header>
+            <ul class="msg-list" id="flags-list"></ul>
+          </div>
+        </article>
+
+        <article class="section-msg section-msg-success" aria-labelledby="findings-heading">
+          <div class="section-msg-icon" aria-hidden="true">
+            <svg viewBox="0 0 20 20" width="20" height="20" fill="none">
+              <circle cx="10" cy="10" r="8" fill="#1F845A"/>
+              <path d="M6.6 10.2l2.2 2.2 4.6-4.8" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="section-msg-content">
+            <header class="section-msg-head">
+              <h2 id="findings-heading">Findings &amp; follow-ups</h2>
+              <span class="lozenge lozenge-success" id="findings-count">0</span>
+            </header>
+            <ul class="msg-list" id="findings-list"></ul>
+          </div>
         </article>
       </div>
     </section>
 
-    <div class="empty-banner card" id="error-banner" hidden role="alert"></div>
+    <div class="section-msg section-msg-danger error-banner" id="error-banner" hidden role="alert"></div>
 
     <div class="workspace" id="workspace" hidden>
       <div class="main-col">
-        <section class="card explorer" aria-labelledby="trend-title">
-          <header class="card-header">
+        <section class="ads-card explorer" aria-labelledby="trend-title">
+          <header class="card-header explorer-header">
             <div class="trend-heading-group">
               <div class="title-row">
                 <h2 id="trend-title">Biomarker trend</h2>
-                <span class="specimen-pill" id="trend-specimen" hidden></span>
+                <span class="lozenge lozenge-neutral" id="trend-specimen" hidden></span>
               </div>
-              <p id="trend-subtitle">Select a biomarker below to compare longitudinal results.</p>
+              <p class="card-sub" id="trend-subtitle">Select a biomarker below to compare longitudinal results.</p>
             </div>
             <div class="trend-metrics">
               <div class="latest-value" id="trend-latest" hidden></div>
-              <div class="delta" id="trend-delta" hidden></div>
+              <span class="lozenge lozenge-info delta-lozenge" id="trend-delta" hidden></span>
             </div>
           </header>
 
           <div class="selector-area">
-            <div class="selector-controls">
+            <div class="tabs-toolbar">
               <div class="panel-tabs" id="panel-tabs" role="tablist" aria-label="Biomarker panels"></div>
-              <label class="search-wrap" aria-label="Filter biomarkers">
-                <input type="search" id="biomarker-search" placeholder="Filter biomarkers…" autocomplete="off">
+              <label class="ads-search" aria-label="Filter biomarkers">
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true">
+                  <circle cx="7" cy="7" r="4.8" stroke="currentColor" stroke-width="1.6"/>
+                  <path d="M10.7 10.7L14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+                <input type="search" id="biomarker-search" placeholder="Search biomarkers…" autocomplete="off">
               </label>
             </div>
-            <div class="biomarker-pills" id="biomarker-list" role="listbox" aria-label="Available biomarkers"></div>
+            <div class="biomarker-grid" id="biomarker-list" role="listbox" aria-label="Available biomarkers"></div>
           </div>
 
           <div class="chart-legend" id="chart-legend" hidden></div>
           <div id="chart" class="chart" role="group" aria-label="Biomarker trend chart by sample collection date"></div>
           <div class="chart-footer" id="chart-footer">
-            <p class="chart-note" id="chart-note">Select any plotted point to inspect the original report page and bounding-box highlight.</p>
+            <p class="chart-note" id="chart-note">Click any plotted data point to inspect the source PDF page and yellow bounding-box highlight.</p>
             <div class="chart-callouts" id="chart-callouts"></div>
           </div>
         </section>
 
-        <section class="card timeline-card" aria-labelledby="timeline-title">
+        <section class="ads-card timeline-card" aria-labelledby="timeline-title">
           <header class="card-header">
             <div>
-              <h2 id="timeline-title">Chronological timeline</h2>
-              <p>Ordered by sample collection date — never print or receipt date</p>
+              <h2 id="timeline-title">Chronological study timeline</h2>
+              <p class="card-sub">Ordered strictly by sample collection date — never report print or inbox receipt date</p>
             </div>
             <div class="timeline-controls">
               <label class="sr-only" for="provider-filter">Filter by provider</label>
-              <select id="provider-filter" class="select-compact" aria-label="Filter timeline by provider">
+              <select id="provider-filter" class="ads-select" aria-label="Filter timeline by provider">
                 <option value="all">All providers</option>
               </select>
-              <span class="total" id="timeline-total"></span>
+              <span class="lozenge lozenge-neutral" id="timeline-total">0 reports</span>
             </div>
           </header>
+
+          <div class="timeline-table-head" aria-hidden="true">
+            <span>Collection date</span>
+            <span>Provider &amp; study</span>
+            <span>Status</span>
+            <span>Results</span>
+            <span class="align-right">Evidence</span>
+          </div>
           <ol id="timeline-list" class="timeline-list"></ol>
           <details id="receipts-details" class="receipts" hidden>
-            <summary>Compare report &amp; receipt order</summary>
+            <summary>Compare report &amp; receipt order against collection order</summary>
             <ol id="receipt-list"></ol>
           </details>
         </section>
 
         <div class="integrity-grid">
-          <section class="card integrity-card" id="skipped-card" aria-labelledby="skipped-title">
+          <section class="ads-card integrity-card" id="skipped-card" aria-labelledby="skipped-title">
             <header class="card-header">
               <div>
                 <h2 id="skipped-title">Patient identity gate</h2>
-                <p id="skipped-subtitle">Non-owner documents are blocked before any measurement is stored</p>
+                <p class="card-sub" id="skipped-subtitle">Non-owner documents are blocked before any measurement is written</p>
               </div>
-              <span class="trust-badge" id="skipped-badge">Protected</span>
+              <span class="lozenge lozenge-success" id="skipped-badge">PROTECTED</span>
             </header>
             <ul id="skipped-list" class="integrity-list"></ul>
           </section>
 
-          <section class="card integrity-card" id="review-card" aria-labelledby="review-title">
+          <section class="ads-card integrity-card" id="review-card" aria-labelledby="review-title">
             <header class="card-header">
               <div>
                 <h2 id="review-title">Needs review</h2>
-                <p id="review-subtitle">Method shifts, missing dates, ambiguous units, or photos awaiting VLM extraction</p>
+                <p class="card-sub" id="review-subtitle">Method shifts, missing dates, ambiguous units, or photos awaiting VLM extraction</p>
               </div>
-              <span class="micro-pill micro-pill-warn" id="review-count">0</span>
+              <span class="lozenge lozenge-warning" id="review-count">0</span>
             </header>
             <ul id="review-list" class="integrity-list"></ul>
           </section>
         </div>
       </div>
 
-      <aside class="card evidence" id="evidence" aria-labelledby="evidence-title">
+      <aside class="ads-card evidence" id="evidence" aria-labelledby="evidence-title">
         <header class="card-header evidence-header">
           <div>
             <div class="title-row">
-              <h2 id="evidence-title">Report evidence</h2>
-              <span class="status-pill" id="ev-status-pill" hidden></span>
+              <h2 id="evidence-title">Source evidence</h2>
+              <span class="lozenge lozenge-success" id="ev-status-pill" hidden></span>
+              <span class="lozenge lozenge-neutral" id="ev-specimen" hidden></span>
             </div>
-            <p id="ev-provider">Select a measurement or study</p>
+            <p class="card-sub" id="ev-provider">Select a measurement or study</p>
           </div>
-          <span class="specimen-pill" id="ev-specimen" hidden></span>
         </header>
 
         <div class="evidence-empty" id="evidence-empty">
-          <p>Select any plotted point, flag, study observation, or review item to verify the exact source page and excerpt.</p>
+          <p>Select any plotted point, out-of-range flag, timeline measurement, or review item to inspect the exact source PDF page and verbatim excerpt.</p>
         </div>
 
         <div class="evidence-body" id="evidence-body" hidden>
           <div class="ev-analyte-bar">
             <strong id="ev-analyte-name"></strong>
-            <span class="flag-badge" id="ev-flag-badge" hidden></span>
+            <span class="lozenge" id="ev-flag-badge" hidden></span>
           </div>
 
           <dl class="reported-grid">
-            <div>
-              <dt>Reported value</dt>
+            <div class="meta-tile">
+              <dt>Reported</dt>
               <dd id="ev-reported">—</dd>
             </div>
-            <div>
-              <dt>Normalized value</dt>
-              <dd id="ev-normalized">—</dd>
+            <div class="meta-tile">
+              <dt>Normalized</dt>
+              <dd class="is-brand" id="ev-normalized">—</dd>
             </div>
-            <div>
-              <dt>Lab reference range</dt>
+            <div class="meta-tile">
+              <dt>Lab range</dt>
               <dd id="ev-lab-range">—</dd>
             </div>
-            <div id="ev-regional-cell">
-              <dt>Regional clinical target</dt>
-              <dd id="ev-regional-target">—</dd>
+            <div class="meta-tile" id="ev-regional-cell">
+              <dt>Regional target</dt>
+              <dd class="is-discovery" id="ev-regional-target">—</dd>
             </div>
           </dl>
 
-          <p id="ev-conversion" class="conversion" hidden></p>
+          <p id="ev-conversion" class="ev-note" hidden></p>
 
           <figure id="ev-source-figure" class="source">
             <div class="source-bar">
               <figcaption id="ev-source-label">Report preview</figcaption>
-              <div class="page-nav" id="ev-page-nav" hidden>
-                <button type="button" id="ev-page-prev" aria-label="Previous page">‹</button>
-                <span id="ev-page-indicator">1 / 1</span>
-                <button type="button" id="ev-page-next" aria-label="Next page">›</button>
+              <div class="source-bar-right">
+                <div class="page-nav" id="ev-page-nav" hidden>
+                  <button type="button" id="ev-page-prev" aria-label="Previous page">‹</button>
+                  <span id="ev-page-indicator">1 / 1</span>
+                  <button type="button" id="ev-page-next" aria-label="Next page">›</button>
+                </div>
+                <a id="ev-source-link-top" class="ads-link-compact" target="_blank" rel="noopener noreferrer" hidden>Open PDF ↗</a>
               </div>
             </div>
             <div class="pdf-page" id="ev-pdf-stage">
@@ -229,8 +313,8 @@
             </div>
             <blockquote id="ev-excerpt" hidden></blockquote>
             <div class="source-actions">
-              <a id="ev-source-link" class="source-link" target="_blank" rel="noopener noreferrer" hidden>Open original source <span aria-hidden="true">↗</span></a>
-              <button type="button" class="link-btn" id="ev-copy-link">Copy deep link</button>
+              <a id="ev-source-link" class="ads-btn ads-btn-subtle ads-btn-sm" target="_blank" rel="noopener noreferrer" hidden>Open original source ↗</a>
+              <button type="button" class="ads-btn ads-btn-subtle ads-btn-sm" id="ev-copy-link">Copy deep link</button>
             </div>
           </figure>
 
@@ -244,15 +328,23 @@
     <div class="modal-card modal-wide">
       <header class="modal-header">
         <div>
-          <p class="eyebrow">Official regional clinical context</p>
+          <p class="breadcrumb">Official Regional Clinical Context</p>
           <h2 id="guidelines-modal-title">Regional Guidelines</h2>
           <p class="modal-sub" id="guidelines-meta">Loading official guideline metadata…</p>
         </div>
         <button type="button" class="icon-close" data-close-dialog="guidelines-dialog" aria-label="Close regional guidelines">✕</button>
       </header>
       <div class="modal-body" id="guidelines-body">
-        <div class="guideline-disclaimer">
-          <strong>Clinical distinction:</strong> Lab assay reference ranges from your lab report remain primary for interpreting an individual result. Regional official clinical targets are shown as secondary prevention/screening context and are not medical advice or a diagnosis.
+        <div class="section-msg section-msg-discovery">
+          <div class="section-msg-icon" aria-hidden="true">
+            <svg viewBox="0 0 20 20" width="20" height="20" fill="none">
+              <circle cx="10" cy="10" r="8" fill="#6E5DC6"/>
+              <path d="M10 9v4.5M10 6.5h.01" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="section-msg-content">
+            <strong>Clinical distinction:</strong> Lab assay reference ranges printed on your report remain primary for interpreting an individual result. Regional official clinical targets are shown as secondary screening/prevention context and are not medical advice or a diagnosis.
+          </div>
         </div>
         <section class="modal-section" id="guidelines-targets-section" hidden>
           <h3>Parsed clinical target bands</h3>
@@ -285,7 +377,7 @@
     <div class="modal-card">
       <header class="modal-header">
         <div>
-          <p class="eyebrow">Local-first ingestion pipeline</p>
+          <p class="breadcrumb">Local-First Ingestion Pipeline</p>
           <h2 id="upload-modal-title">Upload lab PDF or photo</h2>
           <p class="modal-sub">PDFs are parsed deterministically with patient-identity verification. Lab photos are queued safely for agent VLM extraction.</p>
         </div>
@@ -299,7 +391,7 @@
             <span id="upload-dropzone-hint">Supports PDF lab reports (including owner-encrypted LAPI/Médica Sur reports) and PNG/JPG/WEBP/HEIC photos up to 25 MB.</span>
           </label>
           <div class="upload-actions">
-            <button type="submit" class="btn-primary" id="upload-submit-btn" disabled>Ingest file</button>
+            <button type="submit" class="ads-btn ads-btn-primary" id="upload-submit-btn" disabled>Ingest file</button>
             <span class="upload-status-text" id="upload-status-text" role="status"></span>
           </div>
         </form>

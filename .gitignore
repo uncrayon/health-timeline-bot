@@ -1,4 +1,7 @@
 /build/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
 
 # Python
 __pycache__/
@@ -9,10 +12,15 @@ __pycache__/
 node_modules/
 npm-debug.log*
 
-# Local configuration
+# Generated hackathon demo video & capture artifacts (kept locally, not committed)
+/demo-video/
+
+# Local configuration & private data
 .env
 .env.*
 !.env.example
+private-labs-inbox/
+health-data/
 
 # macOS
 .DS_Store
