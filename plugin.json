@@ -1,0 +1,22 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "health-timeline",
+  "version": "0.2.0",
+  "description": "Privacy-first personal health timeline, multi-lab biomarker tracker, official regional clinical guidelines, and evidence-cited VLM/PDF ingestion.",
+  "license": "MIT",
+  "keywords": [
+    "health",
+    "labs",
+    "biomarkers",
+    "timeline",
+    "clinical-guidelines",
+    "mcp"
+  ],
+  "extensions": {
+    "ai.openclaw": {
+      "activation": {
+        "onStartup": false
+      }
+    }
+  }
+}

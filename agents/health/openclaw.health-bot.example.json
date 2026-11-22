@@ -1,0 +1,64 @@
+{
+  "tools": {
+    "sessions": {
+      "visibility": "agent"
+    },
+    "agentToAgent": {
+      "enabled": true,
+      "allow": [
+        "main",
+        "health"
+      ]
+    }
+  },
+  "agents": {
+    "ownership": "explicit",
+    "entries": {
+      "main": {
+        "tools": {
+          "agentToAgent": {
+            "send": [
+              "health"
+            ]
+          }
+        }
+      },
+      "health": {
+        "workspace": "~/.openclaw/workspace-health",
+        "skills": [
+          "health-onboarding-guidelines",
+          "health-clinical-context",
+          "health-timeline-ingest"
+        ],
+        "tools": {
+          "allow": [
+            "health_onboarding",
+            "health_guidelines_sync",
+            "health_guidelines_read",
+            "health_import",
+            "health_commit_extracted",
+            "health_timeline",
+            "health_trend",
+            "health_evidence",
+            "health_overview",
+            "health_ldl_trend"
+          ],
+          "agentToAgent": {
+            "send": []
+          }
+        }
+      }
+    }
+  },
+  "plugins": {
+    "entries": {
+      "health-timeline": {
+        "enabled": true,
+        "config": {
+          "dataDir": "~/.openclaw/workspace-health/data",
+          "inboxDir": "~/.openclaw/workspace-health/inbox"
+        }
+      }
+    }
+  }
+}

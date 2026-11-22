@@ -1,14 +1,22 @@
 {
   "name": "health-timeline",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "license": "MIT",
   "type": "module",
-  "engines": { "node": ">=22.16" },
-  "scripts": {
-    "ingest": "python3 ingest.py",
-    "start": "npm run ingest && node server.mjs",
-    "test": "python3 verify_ingest.py && node --test verify_tool.mjs"
+  "engines": {
+    "node": ">=22.16"
   },
-  "openclaw": { "extensions": ["./openclaw.mjs"] }
+  "scripts": {
+    "ingest:demo": "node -e \"import('./core/ingest.mjs').then(m => m.ingestDirectory('./fixtures', { allowSyntheticDemo: true }).then(r => console.log(JSON.stringify(r, null, 2))))\"",
+    "ingest": "npm run ingest:demo",
+    "mcp": "node mcp-server.mjs",
+    "start": "node server.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "openclaw": {
+    "extensions": [
+      "./openclaw.mjs"
+    ]
+  }
 }

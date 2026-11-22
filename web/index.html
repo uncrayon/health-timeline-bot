@@ -4,67 +4,308 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#123f30">
-  <title>Health Timeline · LDL</title>
+  <title>Health Timeline · Personal Clinical Record</title>
   <link rel="stylesheet" href="/style.css">
   <script type="module" src="/app.mjs"></script>
 </head>
 <body>
   <header class="topbar">
     <div class="shell topbar-inner">
-      <span class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>Health Timeline</span>
-      <span class="demo">Synthetic data</span>
+      <div class="topbar-left">
+        <a class="brand" href="/">
+          <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span>Health Timeline</span>
+        </a>
+        <span class="patient-chip" id="patient-chip" hidden></span>
+      </div>
+      <div class="topbar-actions">
+        <button type="button" class="guideline-btn" id="open-guidelines-btn" aria-haspopup="dialog">
+          <span class="dot" id="guideline-dot" aria-hidden="true"></span>
+          <span id="guideline-btn-label">Regional Guidelines</span>
+        </button>
+        <button type="button" class="upload-btn" id="open-upload-btn" aria-haspopup="dialog">
+          <span aria-hidden="true">+</span> Upload PDF / Photo
+        </button>
+      </div>
     </div>
   </header>
+
   <main class="shell">
-    <div class="introduction">
-      <h1>Did my cholesterol actually go up?</h1>
-      <p id="answer" role="status">Loading the synthetic lab reports…</p>
-    </div>
-    <div class="dashboard" id="dashboard" hidden>
-      <section class="card trend" aria-labelledby="trend-title">
-        <header class="card-header">
-          <div><h2 id="trend-title">LDL over time</h2><p>Direct serum LDL · mg/dL</p></div>
-          <div class="delta" id="delta" hidden></div>
-        </header>
-        <div id="chart" class="chart" role="group" aria-label="LDL chart by collection date"></div>
-        <p class="chart-note">Select a point to see the lab report.</p>
-      </section>
-      <section class="card timeline" aria-labelledby="timeline-title">
-        <header class="card-header">
-          <div><h2 id="timeline-title">Timeline</h2><p>Ordered by sample collection date</p></div>
-          <span class="total" id="total"></span>
-        </header>
-        <ol id="results" class="results"></ol>
-        <details id="receipts" class="receipts">
-          <summary>See receipt order</summary>
-          <ol id="receipt-list"></ol>
-        </details>
-      </section>
-      <aside class="card evidence" id="evidence" aria-labelledby="evidence-title">
-        <header class="card-header"><div><h2 id="evidence-title">Report evidence</h2><p id="provider"></p></div></header>
-        <div class="evidence-body">
-          <dl class="reported">
-            <div><dt>Reported LDL</dt><dd id="original"></dd></div>
-            <div><dt>Lab reference range</dt><dd id="lab-range"></dd></div>
-          </dl>
-          <p id="conversion" class="conversion"></p>
-          <figure id="source" class="source">
-            <figcaption id="source-label"></figcaption>
-            <div class="pdf-page">
-              <img id="page-image" alt="">
-              <span id="line-marker" aria-hidden="true"></span>
+    <section class="overview-band" aria-labelledby="overview-headline">
+      <div class="overview-top">
+        <div class="overview-copy">
+          <p class="eyebrow" id="overview-eyebrow">Local-first longitudinal health record</p>
+          <h1 id="overview-headline">Health Timeline</h1>
+          <p class="overview-lead" id="overview-summary" role="status">Loading longitudinal lab records…</p>
+        </div>
+        <div class="stat-strip" id="stat-strip" aria-label="Record summary counts" hidden>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-studies">0</span>
+            <span class="stat-label">Studies</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-providers">0</span>
+            <span class="stat-label">Providers</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-biomarkers">0</span>
+            <span class="stat-label">Biomarkers</span>
+          </div>
+          <div class="stat-item stat-item-shield" id="stat-skipped-box">
+            <span class="stat-value" id="stat-skipped">0</span>
+            <span class="stat-label">Skipped Non-Owner</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="summary-grid" id="summary-grid" hidden>
+        <article class="summary-card" aria-labelledby="changes-heading">
+          <header class="summary-card-head">
+            <h2 id="changes-heading">Recent changes</h2>
+            <span class="micro-pill" id="changes-count"></span>
+          </header>
+          <ul class="compact-list" id="changes-list"></ul>
+        </article>
+
+        <article class="summary-card" aria-labelledby="flags-heading">
+          <header class="summary-card-head">
+            <h2 id="flags-heading">Out-of-range flags</h2>
+            <span class="micro-pill micro-pill-warn" id="flags-count"></span>
+          </header>
+          <ul class="compact-list" id="flags-list"></ul>
+        </article>
+
+        <article class="summary-card" aria-labelledby="findings-heading">
+          <header class="summary-card-head">
+            <h2 id="findings-heading">Findings &amp; follow-ups</h2>
+            <span class="micro-pill" id="findings-count"></span>
+          </header>
+          <ul class="compact-list" id="findings-list"></ul>
+        </article>
+      </div>
+    </section>
+
+    <div class="empty-banner card" id="error-banner" hidden role="alert"></div>
+
+    <div class="workspace" id="workspace" hidden>
+      <div class="main-col">
+        <section class="card explorer" aria-labelledby="trend-title">
+          <header class="card-header">
+            <div class="trend-heading-group">
+              <div class="title-row">
+                <h2 id="trend-title">Biomarker trend</h2>
+                <span class="specimen-pill" id="trend-specimen" hidden></span>
+              </div>
+              <p id="trend-subtitle">Select a biomarker below to compare longitudinal results.</p>
             </div>
-            <blockquote id="excerpt"></blockquote>
-            <a id="pdf-link" target="_blank" rel="noopener">Open original PDF <span aria-hidden="true">↗</span></a>
+            <div class="trend-metrics">
+              <div class="latest-value" id="trend-latest" hidden></div>
+              <div class="delta" id="trend-delta" hidden></div>
+            </div>
+          </header>
+
+          <div class="selector-area">
+            <div class="selector-controls">
+              <div class="panel-tabs" id="panel-tabs" role="tablist" aria-label="Biomarker panels"></div>
+              <label class="search-wrap" aria-label="Filter biomarkers">
+                <input type="search" id="biomarker-search" placeholder="Filter biomarkers…" autocomplete="off">
+              </label>
+            </div>
+            <div class="biomarker-pills" id="biomarker-list" role="listbox" aria-label="Available biomarkers"></div>
+          </div>
+
+          <div class="chart-legend" id="chart-legend" hidden></div>
+          <div id="chart" class="chart" role="group" aria-label="Biomarker trend chart by sample collection date"></div>
+          <div class="chart-footer" id="chart-footer">
+            <p class="chart-note" id="chart-note">Select any plotted point to inspect the original report page and bounding-box highlight.</p>
+            <div class="chart-callouts" id="chart-callouts"></div>
+          </div>
+        </section>
+
+        <section class="card timeline-card" aria-labelledby="timeline-title">
+          <header class="card-header">
+            <div>
+              <h2 id="timeline-title">Chronological timeline</h2>
+              <p>Ordered by sample collection date — never print or receipt date</p>
+            </div>
+            <div class="timeline-controls">
+              <label class="sr-only" for="provider-filter">Filter by provider</label>
+              <select id="provider-filter" class="select-compact" aria-label="Filter timeline by provider">
+                <option value="all">All providers</option>
+              </select>
+              <span class="total" id="timeline-total"></span>
+            </div>
+          </header>
+          <ol id="timeline-list" class="timeline-list"></ol>
+          <details id="receipts-details" class="receipts" hidden>
+            <summary>Compare report &amp; receipt order</summary>
+            <ol id="receipt-list"></ol>
+          </details>
+        </section>
+
+        <div class="integrity-grid">
+          <section class="card integrity-card" id="skipped-card" aria-labelledby="skipped-title">
+            <header class="card-header">
+              <div>
+                <h2 id="skipped-title">Patient identity gate</h2>
+                <p id="skipped-subtitle">Non-owner documents are blocked before any measurement is stored</p>
+              </div>
+              <span class="trust-badge" id="skipped-badge">Protected</span>
+            </header>
+            <ul id="skipped-list" class="integrity-list"></ul>
+          </section>
+
+          <section class="card integrity-card" id="review-card" aria-labelledby="review-title">
+            <header class="card-header">
+              <div>
+                <h2 id="review-title">Needs review</h2>
+                <p id="review-subtitle">Method shifts, missing dates, ambiguous units, or photos awaiting VLM extraction</p>
+              </div>
+              <span class="micro-pill micro-pill-warn" id="review-count">0</span>
+            </header>
+            <ul id="review-list" class="integrity-list"></ul>
+          </section>
+        </div>
+      </div>
+
+      <aside class="card evidence" id="evidence" aria-labelledby="evidence-title">
+        <header class="card-header evidence-header">
+          <div>
+            <div class="title-row">
+              <h2 id="evidence-title">Report evidence</h2>
+              <span class="status-pill" id="ev-status-pill" hidden></span>
+            </div>
+            <p id="ev-provider">Select a measurement or study</p>
+          </div>
+          <span class="specimen-pill" id="ev-specimen" hidden></span>
+        </header>
+
+        <div class="evidence-empty" id="evidence-empty">
+          <p>Select any plotted point, flag, study observation, or review item to verify the exact source page and excerpt.</p>
+        </div>
+
+        <div class="evidence-body" id="evidence-body" hidden>
+          <div class="ev-analyte-bar">
+            <strong id="ev-analyte-name"></strong>
+            <span class="flag-badge" id="ev-flag-badge" hidden></span>
+          </div>
+
+          <dl class="reported-grid">
+            <div>
+              <dt>Reported value</dt>
+              <dd id="ev-reported">—</dd>
+            </div>
+            <div>
+              <dt>Normalized value</dt>
+              <dd id="ev-normalized">—</dd>
+            </div>
+            <div>
+              <dt>Lab reference range</dt>
+              <dd id="ev-lab-range">—</dd>
+            </div>
+            <div id="ev-regional-cell">
+              <dt>Regional clinical target</dt>
+              <dd id="ev-regional-target">—</dd>
+            </div>
+          </dl>
+
+          <p id="ev-conversion" class="conversion" hidden></p>
+
+          <figure id="ev-source-figure" class="source">
+            <div class="source-bar">
+              <figcaption id="ev-source-label">Report preview</figcaption>
+              <div class="page-nav" id="ev-page-nav" hidden>
+                <button type="button" id="ev-page-prev" aria-label="Previous page">‹</button>
+                <span id="ev-page-indicator">1 / 1</span>
+                <button type="button" id="ev-page-next" aria-label="Next page">›</button>
+              </div>
+            </div>
+            <div class="pdf-page" id="ev-pdf-stage">
+              <img id="ev-page-image" alt="">
+              <span id="ev-line-marker" aria-hidden="true" hidden></span>
+              <div class="pdf-fallback" id="ev-image-fallback" hidden>
+                Page preview image is not rendered for this document yet. Open the original source file below to inspect it directly.
+              </div>
+            </div>
+            <blockquote id="ev-excerpt" hidden></blockquote>
+            <div class="source-actions">
+              <a id="ev-source-link" class="source-link" target="_blank" rel="noopener noreferrer" hidden>Open original source <span aria-hidden="true">↗</span></a>
+              <button type="button" class="link-btn" id="ev-copy-link">Copy deep link</button>
+            </div>
           </figure>
-          <dl id="dates" class="dates"></dl>
+
+          <dl id="ev-dates" class="dates"></dl>
         </div>
       </aside>
-      <section class="card review" id="review" aria-labelledby="review-title" hidden>
-        <header class="card-header"><h2 id="review-title">Needs review</h2></header>
-        <ul id="review-list"></ul>
-      </section>
     </div>
   </main>
+
+  <dialog id="guidelines-dialog" class="modal" aria-labelledby="guidelines-modal-title">
+    <div class="modal-card modal-wide">
+      <header class="modal-header">
+        <div>
+          <p class="eyebrow">Official regional clinical context</p>
+          <h2 id="guidelines-modal-title">Regional Guidelines</h2>
+          <p class="modal-sub" id="guidelines-meta">Loading official guideline metadata…</p>
+        </div>
+        <button type="button" class="icon-close" data-close-dialog="guidelines-dialog" aria-label="Close regional guidelines">✕</button>
+      </header>
+      <div class="modal-body" id="guidelines-body">
+        <div class="guideline-disclaimer">
+          <strong>Clinical distinction:</strong> Lab assay reference ranges from your lab report remain primary for interpreting an individual result. Regional official clinical targets are shown as secondary prevention/screening context and are not medical advice or a diagnosis.
+        </div>
+        <section class="modal-section" id="guidelines-targets-section" hidden>
+          <h3>Parsed clinical target bands</h3>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Biomarker</th>
+                  <th>Target</th>
+                  <th>Official source / notes</th>
+                </tr>
+              </thead>
+              <tbody id="guidelines-targets-body"></tbody>
+            </table>
+          </div>
+        </section>
+        <section class="modal-section" id="guidelines-sources-section" hidden>
+          <h3>Official sources consulted</h3>
+          <ul class="source-url-list" id="guidelines-sources-list"></ul>
+        </section>
+        <section class="modal-section">
+          <h3>Full regional-guidelines.md</h3>
+          <pre class="markdown-pre" id="guidelines-markdown">No regional guidelines file synced yet.</pre>
+        </section>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="upload-dialog" class="modal" aria-labelledby="upload-modal-title">
+    <div class="modal-card">
+      <header class="modal-header">
+        <div>
+          <p class="eyebrow">Local-first ingestion pipeline</p>
+          <h2 id="upload-modal-title">Upload lab PDF or photo</h2>
+          <p class="modal-sub">PDFs are parsed deterministically with patient-identity verification. Lab photos are queued safely for agent VLM extraction.</p>
+        </div>
+        <button type="button" class="icon-close" data-close-dialog="upload-dialog" aria-label="Close upload modal">✕</button>
+      </header>
+      <div class="modal-body">
+        <form id="upload-form" class="upload-form">
+          <label class="dropzone" id="upload-dropzone" for="upload-file-input">
+            <input type="file" id="upload-file-input" name="file" accept=".pdf,application/pdf,image/png,image/jpeg,image/webp,image/heic" required>
+            <strong id="upload-dropzone-title">Drop a PDF or lab photo here, or click to browse</strong>
+            <span id="upload-dropzone-hint">Supports PDF lab reports (including owner-encrypted LAPI/Médica Sur reports) and PNG/JPG/WEBP/HEIC photos up to 25 MB.</span>
+          </label>
+          <div class="upload-actions">
+            <button type="submit" class="btn-primary" id="upload-submit-btn" disabled>Ingest file</button>
+            <span class="upload-status-text" id="upload-status-text" role="status"></span>
+          </div>
+        </form>
+        <div id="upload-result" class="upload-result" hidden></div>
+      </div>
+    </div>
+  </dialog>
 </body>
 </html>

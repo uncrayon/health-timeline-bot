@@ -1,8 +1,79 @@
 {
   "id": "health-timeline",
   "name": "Health Timeline",
-  "description": "Read-only comparison of the two synthetic direct serum LDL reports.",
-  "configSchema": { "type": "object", "properties": {}, "additionalProperties": false },
-  "contracts": { "tools": ["health_ldl_trend"] },
-  "toolMetadata": { "health_ldl_trend": { "optional": true } }
+  "description": "Privacy-first personal health timeline, multi-lab biomarker tracker, official regional clinical guidelines, and evidence-cited PDF/photo ingestion.",
+  "categories": [
+    "data-analytics"
+  ],
+  "skills": [
+    "./skills"
+  ],
+  "activation": {
+    "onStartup": false
+  },
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "dataDir": {
+        "type": "string",
+        "description": "Local directory for timeline.sqlite, rendered page PNGs, and regional-guidelines.md."
+      },
+      "inboxDir": {
+        "type": "string",
+        "description": "Approved local inbox directory containing lab PDFs and photos for health_import."
+      },
+      "allowSyntheticDemo": {
+        "type": "boolean",
+        "description": "Allow ingesting the built-in synthetic Cedar/Meridian demo fixtures without matching an onboarded profile."
+      }
+    },
+    "additionalProperties": false
+  },
+  "contracts": {
+    "tools": [
+      "health_onboarding",
+      "health_guidelines_sync",
+      "health_guidelines_read",
+      "health_import",
+      "health_commit_extracted",
+      "health_timeline",
+      "health_trend",
+      "health_evidence",
+      "health_overview",
+      "health_ldl_trend"
+    ]
+  },
+  "toolMetadata": {
+    "health_onboarding": {
+      "sideEffecting": true
+    },
+    "health_guidelines_sync": {
+      "sideEffecting": true
+    },
+    "health_guidelines_read": {
+      "replaySafe": true
+    },
+    "health_import": {
+      "sideEffecting": true
+    },
+    "health_commit_extracted": {
+      "sideEffecting": true
+    },
+    "health_timeline": {
+      "replaySafe": true
+    },
+    "health_trend": {
+      "replaySafe": true
+    },
+    "health_evidence": {
+      "replaySafe": true
+    },
+    "health_overview": {
+      "replaySafe": true
+    },
+    "health_ldl_trend": {
+      "optional": true,
+      "replaySafe": true
+    }
+  }
 }
